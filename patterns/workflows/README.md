@@ -138,7 +138,7 @@ graph LR
     B --> C[Planning Phase]
     C --> D[Writing Phase]
     D --> E[Review Phase]
-    style D fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#00f,stroke:#333,stroke-width:2px
 ```
 
 #### Orchestrator

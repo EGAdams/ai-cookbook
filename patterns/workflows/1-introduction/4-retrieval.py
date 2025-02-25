@@ -55,7 +55,7 @@ messages = [
 ]
 
 completion = client.chat.completions.create(
-    model="gpt-4o",
+    model="gpt-4o-mini",
     messages=messages,
     tools=tools,
 )
@@ -97,7 +97,7 @@ class KBResponse(BaseModel):
 
 
 completion_2 = client.beta.chat.completions.parse(
-    model="gpt-4o",
+    model="gpt-4o-mini",
     messages=messages,
     tools=tools,
     response_format=KBResponse,
@@ -108,9 +108,8 @@ completion_2 = client.beta.chat.completions.parse(
 # --------------------------------------------------------------
 
 final_response = completion_2.choices[0].message.parsed
-final_response.answer
-final_response.source
-
+print(final_response.answer)
+print(final_response.source)
 # --------------------------------------------------------------
 # Question that doesn't trigger the tool
 # --------------------------------------------------------------
@@ -121,9 +120,9 @@ messages = [
 ]
 
 completion_3 = client.beta.chat.completions.parse(
-    model="gpt-4o",
+    model="gpt-4o-mini",
     messages=messages,
     tools=tools,
 )
 
-completion_3.choices[0].message.content
+print( completion_3.choices[0].message.content )

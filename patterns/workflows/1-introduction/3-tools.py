@@ -34,7 +34,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_weather",
-            "description": "Get current temperature for provided coordinates in celsius.",
+            "description": "Get current temperature for provided coordinates in farenheit and wind speed in mph.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -53,11 +53,11 @@ system_prompt = "You are a helpful weather assistant."
 
 messages = [
     {"role": "system", "content": system_prompt},
-    {"role": "user", "content": "What's the weather like in Paris today?"},
+    {"role": "user", "content": "What's the weather like in St. Petersbug, Florida today?"},
 ]
 
 completion = client.chat.completions.create(
-    model="gpt-4o",
+    model="gpt-4o-mini",
     messages=messages,
     tools=tools,
 )
@@ -95,7 +95,7 @@ for tool_call in completion.choices[0].message.tool_calls:
 
 class WeatherResponse(BaseModel):
     temperature: float = Field(
-        description="The current temperature in celsius for the given location."
+        description="The current temperature in farenheit for the given location."
     )
     response: str = Field(
         description="A natural language response to the user's question."
@@ -103,7 +103,7 @@ class WeatherResponse(BaseModel):
 
 
 completion_2 = client.beta.chat.completions.parse(
-    model="gpt-4o",
+    model="gpt-4o-mini",
     messages=messages,
     tools=tools,
     response_format=WeatherResponse,
@@ -114,5 +114,6 @@ completion_2 = client.beta.chat.completions.parse(
 # --------------------------------------------------------------
 
 final_response = completion_2.choices[0].message.parsed
-final_response.temperature
-final_response.response
+
+print(final_response.temperature)
+print(final_response.response)

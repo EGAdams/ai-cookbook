@@ -189,6 +189,19 @@ class SoftwareOrchestrator:
             logger.info(f"Developing module: {module_task.module_name}")
             implementation = self.develop_module(module_task)
             self.modules_implementation[module_task.module_name] = implementation
+            # make directory with current timestamp ie build_march_01__8_10_PM
+            import datetime
+            now = datetime.datetime.now()
+            timestamp = now.strftime("%B_%d__%I_%M_%p")
+            directory_name = f"build_{timestamp}"
+            os.makedirs(directory_name, exist_ok=True)
+            with open(f"{directory_name}/{module_task.module_name}.py", "w") as f:
+                f.write(implementation.code)
+            with open(f"{directory_name}/{module_task.module_name}_tests.py", "w") as f:
+                f.write(implementation.tests)
+            with open(f"{directory_name}/{module_task.module_name}_docs.md", "w") as f:
+                f.write(implementation.documentation)
+
 
         # Review and polish
         logger.info("Reviewing full software component design")

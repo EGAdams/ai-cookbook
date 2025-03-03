@@ -1,3 +1,4 @@
+import datetime
 from typing import List, Dict
 from pydantic import BaseModel, Field
 from openai import OpenAI
@@ -20,11 +21,12 @@ model = "gpt-4o-mini"
 # --------------------------------------------------------------
 
 class ModuleTask(BaseModel):
-    """Task for developing a software module"""
-    module_name: str = Field(description="Name of the module to develop")
-    functionality: str = Field(description="Description of the module's functionality")
-    interfaces: List[str] = Field(description="List of interfaces the module should implement")
-    dependencies: List[str] = Field(description="Other modules or services this module depends on")
+    """Defines an individual module within the orchestrator plan."""
+    name: str = Field(description="Module name")
+    functionality: str = Field(description="Description of what this module does")
+    interfaces: List[str] = Field(description="List of interfaces provided or used by this module")
+    dependencies: List[str] = Field(description="List of dependencies required by this module")
+
 
 class OrchestratorPlan(BaseModel):
     """Orchestrator's software component structure and tasks"""
@@ -40,7 +42,7 @@ class ModuleImplementation(BaseModel):
 
 class SuggestedEdits(BaseModel):
     """Suggested edits for a module"""
-    module_name: str = Field(description="Name of the module")
+    name: str = Field(description="Name of the module")
     suggested_edit: str = Field(description="Suggested edit")
 
 class ReviewFeedback(BaseModel):
@@ -58,12 +60,31 @@ Analyze the following software requirements and design a component structure.
 
 Requirements: {requirements}
 Design Constraints: {constraints}
+
+Return your response in this format:
+
+# System Overview
+{system_overview}
+
+# Design Patterns
+{design_patterns}
+
+# Modules
+{modules}
 """
+
+MODULE_TEMPLATE = """
+## {name}
+- Functionality: {functionality}
+- Interfaces: {interfaces}
+- Dependencies: {dependencies}
+"""
+
 
 WORKER_PROMPT = """
 Develop the following software module based on the provided specifications.
 
-Module Name: {module_name}
+Module Name: {name}
 Functionality: {functionality}
 Interfaces: {interfaces}
 Dependencies: {dependencies}
@@ -87,20 +108,54 @@ class SoftwareOrchestrator:
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def get_plan(self, requirements: str, constraints: str) -> OrchestratorPlan:
-        """Get orchestrator's software component structure plan"""
+        """Get orchestrator's software component structure plan."""
+        
+        # First, make an API call to get structured data
         completion = self.client.beta.chat.completions.parse(
-            model="gpt-4o-mini",  # Ensure the correct model is used
+            model="gpt-4o-mini",  # Ensure correct model usage
             messages=[
                 {
                     "role": "system",
                     "content": ORCHESTRATOR_PROMPT.format(
-                        requirements=requirements, constraints=constraints
+                        requirements=requirements,
+                        constraints=constraints,
+                        system_overview="{system_overview}",
+                        design_patterns="{design_patterns}",
+                        modules="{modules}"
                     ),
                 }
             ],
-            response_format=OrchestratorPlan,  # Ensure response is parsed correctly into the Pydantic model
+            response_format=OrchestratorPlan,  # Ensure response is parsed into Pydantic model
         )
-        return completion.choices[0].message.parsed  # Return the structured response
+
+        plan = completion.choices[0].message.parsed  # Extract structured response
+
+        # Format the module list dynamically
+        formatted_modules = "\n".join(
+            MODULE_TEMPLATE.format(
+                name=module.name,
+                functionality=module.functionality,
+                interfaces=", ".join(module.interfaces),
+                dependencies=", ".join(module.dependencies)
+            )
+            for module in plan.modules
+        )
+
+        # Final formatting
+        prompt_content = ORCHESTRATOR_PROMPT.format(
+            requirements=requirements,
+            constraints=constraints,
+            system_overview=plan.system_overview,
+            design_patterns="\n- ".join(plan.design_patterns),
+            modules=formatted_modules
+        )
+
+        # return prompt_content  # Return the structured and formatted response
+        # put the prompt into a file named plan.md
+        with open("plan.md", "w") as f:
+            f.write(prompt_content)
+
+        return plan
 
 
     def develop_module(self, module_task: ModuleTask) -> ModuleImplementation:
@@ -109,7 +164,7 @@ class SoftwareOrchestrator:
             model="gpt-4o-mini",
             messages=[
                 {"role": "user", "content": WORKER_PROMPT.format(
-                    module_name=module_task.module_name,
+                    name=module_task.name,
                     functionality=module_task.functionality,
                     interfaces=", ".join(module_task.interfaces),
                     dependencies=", ".join(module_task.dependencies),
@@ -123,7 +178,7 @@ class SoftwareOrchestrator:
         """Reviewer: Analyze and improve overall cohesion"""
         modules_text = "\n\n".join(
             [
-                f"=== {module.module_name} ===\nFunctionality: {module.functionality}\nInterfaces: {', '.join(module.interfaces)}\nDependencies: {', '.join(module.dependencies)}"
+                f"=== {module.name} ===\nFunctionality: {module.functionality}\nInterfaces: {', '.join(module.interfaces)}\nDependencies: {', '.join(module.dependencies)}"
                 for module in plan.modules
             ]
         )
@@ -150,9 +205,19 @@ class SoftwareOrchestrator:
 
         # Develop each module
         for module_task in plan.modules:
-            logger.info(f"Developing module: {module_task.module_name}")
+            logger.info(f"Developing module: {module_task.name}")
             implementation = self.develop_module(module_task)
-            self.modules_implementation[module_task.module_name] = implementation
+            self.modules_implementation[module_task.name] = implementation
+            now = datetime.datetime.now()
+            timestamp = now.strftime("%B_%d__%I_%M_%p")
+            directory_name = f"build_{timestamp}"
+            os.makedirs(directory_name, exist_ok=True)
+            with open(f"{directory_name}/{module_task.name}.py", "w") as f:
+                f.write(implementation.code)
+            with open(f"{directory_name}/{module_task.name}_tests.py", "w") as f:
+                f.write(implementation.tests)
+            with open(f"{directory_name}/{module_task.name}_docs.md", "w") as f:
+                f.write(implementation.documentation)
 
         # Review and polish
         logger.info("Reviewing full software component design")
@@ -187,6 +252,6 @@ if __name__ == "__main__":
     print("\nCohesion Score:", result["review"].cohesion_score)
     if result["review"].suggested_edits:
         for edit in result["review"].suggested_edits:
-            print(f"\nModule: {edit.module_name}")
+            print(f"\nModule: {edit.name}")
             print(f"Suggested Edit: {edit.suggested_edit}")
 # 030125

@@ -1,9 +1,9 @@
 ```mermaid
 %%{init: {'theme': 'default', 'themeVariables': { 
-    'actorBkg': '#F4D03F', 'actorBorder': '#fff', 
+    'actorBkg': '#F4D03F', 'actorBorder': '#00f', 
     'actorFontSize': '18px', 'actorFontWeight': 'bold',
     'sequenceNumberColor': '#FFFFFF', 'sequenceTextSize': '16px',
-    'noteBkgColor': '#E8F8F5', 'noteTextColor': '#FFFFFF',
+    'noteBkgColor': '#E8F8F5', 'noteTextColor': '#000000',
     'noteBorderColor': '#fff', 'messageTextColor': '#FFFFFF'
 }}}%%
 
